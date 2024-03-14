@@ -1,0 +1,573 @@
+Program.Sub.ScreenSU.Start
+Gui.F_Open-Close..Create
+Gui.F_Open-Close..Caption("WO Sequences Open/Closed")
+Gui.F_Open-Close..Size(9255,8505)
+Gui.F_Open-Close..MinX(8500)
+Gui.F_Open-Close..MinY(4250)
+Gui.F_Open-Close..Position(0,0)
+Gui.F_Open-Close..BackColor(-2147483633)
+Gui.F_Open-Close..MousePointer(0)
+Gui.F_Open-Close..Event(UnLoad,F_Open-Close_UnLoad)
+Gui.F_Open-Close.frameDates.Create(Frame)
+Gui.F_Open-Close.frameDates.Size(3420,765)
+Gui.F_Open-Close.frameDates.Position(75,75)
+Gui.F_Open-Close.dtpBegDate.Create(DatePicker)
+Gui.F_Open-Close.dtpBegDate.Size(1440,285)
+Gui.F_Open-Close.dtpBegDate.Position(90,330)
+Gui.F_Open-Close.dtpBegDate.Parent("frameDates")
+Gui.F_Open-Close.dtpBegDate.Event(Change,dtpXXXDate_Change)
+Gui.F_Open-Close.dtpEndDate.Create(DatePicker)
+Gui.F_Open-Close.dtpEndDate.Size(1440,285)
+Gui.F_Open-Close.dtpEndDate.Position(1890,330)
+Gui.F_Open-Close.dtpEndDate.Parent("frameDates")
+Gui.F_Open-Close.dtpEndDate.Event(Change,dtpXXXDate_Change)
+Gui.F_Open-Close.lblTo.Create(Label,"To",True,285,255,0,1575,435,True,0,"Arial",8,-2147483633,0)
+Gui.F_Open-Close.lblTo.Parent("frameDates")
+Gui.F_Open-Close.chkDates.Create(CheckBox)
+Gui.F_Open-Close.chkDates.Zorder(1)
+Gui.F_Open-Close.chkDates.Size(1035,360)
+Gui.F_Open-Close.chkDates.Position(165,15)
+Gui.F_Open-Close.chkDates.Caption("All Dates")
+Gui.F_Open-Close.chkDates.Event(Click,chkDates_Click)
+Gui.F_Open-Close.cmdRefresh.Create(Button)
+Gui.F_Open-Close.cmdRefresh.Size(555,555)
+Gui.F_Open-Close.cmdRefresh.Position(3660,225)
+Gui.F_Open-Close.cmdRefresh.Caption("Refresh")
+Gui.F_Open-Close.cmdRefresh.Event(Click,RefreshDashboard)
+Gui.F_Open-Close.lblLastRefresh.Create(Label,"Last Refresh:",False,2910,255,0,6165,90,True,0,"Arial",8,-2147483633,0)
+Gui.F_Open-Close.lblLastRefresh.Anchor(9)
+Gui.F_Open-Close.gsgcOpenClose.Create(GsGridControl)
+Gui.F_Open-Close.gsgcOpenClose.Size(9135,7275)
+Gui.F_Open-Close.gsgcOpenClose.Position(0,945)
+Gui.F_Open-Close.gsgcOpenClose.Anchor(15)
+Gui.F_Open-Close.gsgcOpenClose.Event(RowCellClick,gsgcOpenClose_RowCellClick)
+Gui.F_Open-Close.chkOpLimit.Create(CheckBox)
+Gui.F_Open-Close.chkOpLimit.Size(3570,360)
+Gui.F_Open-Close.chkOpLimit.Position(5400,480)
+Gui.F_Open-Close.chkOpLimit.Caption("Limit Jobs opened in the last three months")
+Gui.F_Open-Close.chkOpLimit.Anchor(9)
+Gui.F_Open-Close.chkOpLimit.Visible(False)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+V.Global.dMonday.Declare
+V.Global.dFriday.Declare
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Author: Bix
+'Date: 18 Oct 2019
+'CARRIERE INDUSTRIAL SUPPLY LTD
+'GCG_5724_WO_Open-Close_Seq_Dashboard.g2u
+'Dashboard for viewing open and closed sequences on Jobs and flagging them from open to closed
+V.Local.sError.Declare
+V.Local.sIcon.Declare
+V.Local.iWeekday.Declare
+V.Local.iDaysToMonday.Declare
+V.Local.iDaysToFriday.Declare
+V.Local.dToday.Declare
+F.Intrinsic.Control.Try
+
+'Not doing an intial refresh in case user wants to change dates
+V.Local.dToday.Set(V.Ambient.Date)
+F.Intrinsic.Date.Weekday(V.Local.dToday,V.Local.iWeekday)
+F.Intrinsic.Math.Sub(2,V.Local.iWeekday,V.Local.iDaysToMonday)
+F.Intrinsic.Math.Sub(6,V.Local.iWeekday,V.Local.iDaysToFriday)
+F.Intrinsic.Date.DateAdd("d",V.Local.iDaysToMonday,V.Local.dToday,V.Global.dMonday)
+F.Intrinsic.Date.DateAdd("d",V.Local.iDaysToFriday,V.Local.dToday,V.Global.dFriday)
+
+F.Intrinsic.String.Build("{0}\gss2.ico",V.Caller.GASDir,V.Local.sIcon)
+Gui.F_Open-Close..Icon(V.Local.sIcon)
+
+Gui.F_Open-Close.dtpBegDate.Value(V.Global.dMonday)
+Gui.F_Open-Close.dtpEndDate.Value(V.Global.dFriday)
+Gui.F_Open-Close..Show
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.F_Open-Close_UnLoad.Start
+V.Local.sError.Declare
+V.Local.sMsg.Declare
+V.Local.iCnt.Declare
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Control.If(V.DataTable.dtJobOpOC.Exists)
+	F.Intrinsic.Control.CallSub(DisableControls)
+	F.Data.DataView.Create("dtJobOpOC","dvClosed",22,"CLOSED = True",)
+	F.Intrinsic.Control.If(V.DataView.dtJobOpOC!dvClosed.RowCount,>,0)
+		F.Data.DataView.ToDataTableDistinct("dtJobOpOC","dvClosed","dtScheduleJobs","JOB*!*SUFFIX*!*JOB_START*!*JOB_DUE")
+		F.Intrinsic.UI.InvokeWaitDialog("Backward Scheduling WOs to update commitments","Closing dashboard")
+		F.Intrinsic.Control.For(V.Local.iCnt,0,V.DataTable.dtScheduleJobs.RowCount--,1)
+			F.Intrinsic.String.Build("Backward Scheduling WOs to update commitments{0}Job: {1}{0}Suffix: {2}",V.Ambient.NewLine,V.DataTable.dtScheduleJobs(V.Local.iCnt).JOB!FieldVal,V.DataTable.dtScheduleJobs(V.Local.iCnt).SUFFIX!FieldVal,V.Local.sMsg)
+			F.Intrinsic.UI.ChangeWaitStatus(V.Local.sMsg)
+			F.Intrinsic.Control.CallSub(UpdateScheduleDates,"Job",V.DataTable.dtScheduleJobs(V.Local.iCnt).JOB!FieldVal,"Suffix",V.DataTable.dtScheduleJobs(V.Local.iCnt).SUFFIX!FieldVal,"StartDate",V.DataTable.dtScheduleJobs(V.Local.iCnt).JOB_START!FieldVal,"DueDate",V.DataTable.dtScheduleJobs(V.Local.iCnt).JOB_DUE!FieldVal)
+		F.Intrinsic.Control.Next(V.Local.iCnt)
+		F.Intrinsic.UI.CloseWaitDialog
+		F.Data.DataTable.Close("dtScheduleJobs")
+	F.Intrinsic.Control.EndIf
+	F.Data.DataTable.Close("dtJobOpOC")
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.F_Open-Close_UnLoad.End
+
+Program.Sub.chkDates_Click.Start
+'Deactivates the dates frame and resets the date values to monday and friday of the current week
+V.Local.sError.Declare
+F.Intrinsic.Control.Try
+
+Gui.F_Open-Close.frameDates.Enabled(V.Screen.F_Open-Close!chkDates.CheckedAsBoolean.Not)
+
+F.Intrinsic.Control.If(V.Screen.F_Open-Close!chkDates.CheckedAsBoolean)
+	Gui.F_Open-Close.dtpBegDate.Value(V.Global.dMonday)
+	Gui.F_Open-Close.dtpEndDate.Value(V.Global.dFriday)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.chkDates_Click.End
+
+Program.Sub.dtpXXXDate_Change.Start
+'Reassures that beginning date and ending date follow correct logic
+V.Local.sError.Declare
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Control.If(V.Screen.F_Open-Close!dtpBegDate.Value,>,V.Screen.F_Open-Close!dtpEndDate.Value)
+	F.Intrinsic.Control.If(V.Args.ControlName.UCase,=,"DTPBEGDATE")
+		Gui.F_Open-Close.dtpEndDate.Value(V.Screen.F_Open-Close!dtpBegDate.Value)
+	F.Intrinsic.Control.Else
+		Gui.F_Open-Close.dtpBegDate.Value(V.Screen.F_Open-Close!dtpEndDate.Value)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.dtpXXXDate_Change.End
+
+Program.Sub.RefreshDashboard.Start
+'Loads data and updates the dashboard
+V.Local.sError.Declare
+V.Local.sLastRefresh.Declare
+V.Local.sMsg.Declare
+V.Local.iCnt.Declare
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Control.If(V.DataTable.dtJobOpOC.Exists)
+	F.Data.DataView.Create("dtJobOpOC","dvClosed",22,"CLOSED = True",)
+	F.Intrinsic.Control.If(V.DataView.dtJobOpOC!dvClosed.RowCount,>,0)
+		F.Data.DataView.ToDataTableDistinct("dtJobOpOC","dvClosed","dtScheduleJobs","JOB*!*SUFFIX*!*JOB_START*!*JOB_DUE")
+		F.Intrinsic.UI.InvokeWaitDialog("Backward Scheduling WOs to update commitments","Closing dashboard")
+		F.Intrinsic.Control.For(V.Local.iCnt,0,V.DataTable.dtScheduleJobs.RowCount--,1)
+			F.Intrinsic.String.Build("Backward Scheduling WOs to update commitments{0}Job: {1}{0}Suffix: {2}",V.Ambient.NewLine,V.DataTable.dtScheduleJobs(V.Local.iCnt).JOB!FieldVal,V.DataTable.dtScheduleJobs(V.Local.iCnt).SUFFIX!FieldVal,V.Local.sMsg)
+			F.Intrinsic.UI.ChangeWaitStatus(V.Local.sMsg)
+			F.Intrinsic.Control.CallSub(UpdateScheduleDates,"Job",V.DataTable.dtScheduleJobs(V.Local.iCnt).JOB!FieldVal,"Suffix",V.DataTable.dtScheduleJobs(V.Local.iCnt).SUFFIX!FieldVal,"StartDate",V.DataTable.dtScheduleJobs(V.Local.iCnt).JOB_START!FieldVal,"DueDate",V.DataTable.dtScheduleJobs(V.Local.iCnt).JOB_DUE!FieldVal)
+		F.Intrinsic.Control.Next(V.Local.iCnt)
+		F.Intrinsic.UI.CloseWaitDialog
+		F.Data.DataTable.Close("dtScheduleJobs")
+	F.Intrinsic.Control.EndIf
+	F.Data.DataTable.Close("dtJobOpOC")
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.CallSub(DisableControls)
+
+F.Intrinsic.Control.CallSub(LoadDataTable)
+
+F.Intrinsic.Control.CallSub(LoadGridView)
+
+F.Intrinsic.String.Format(V.Ambient.Now,"DD MMM YYYY HH:NN:SS AMPM",V.Local.sLastRefresh)
+F.Intrinsic.String.Build("Last Refresh: {0}",V.Local.sLastRefresh,V.Local.sLastRefresh)
+Gui.F_Open-Close.lblLastRefresh.Caption(V.Local.sLastRefresh)
+Gui.F_Open-Close.lblLastRefresh.Visible(True)
+
+F.Intrinsic.Control.CallSub(EnableControls)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.RefreshDashboard.End
+
+Program.Sub.LoadDataTable.Start
+V.Local.sError.Declare
+V.Local.sSQL.Declare
+V.Local.sBegDate.Declare
+V.Local.sEndDate.Declare
+V.Local.sFilter.Declare
+V.Local.dThreeMonths.Declare
+F.Intrinsic.Control.Try
+
+F.ODBC.Connection!con.OpenCompanyConnection(500)
+V.Local.sSQL.Set("select A.JOB, A.SUFFIX, A.SEQ, A.LMO, rtrim(A.PART) as RM_PART_WC, IF(A.LMO = 'M' or A.LMO = 'O', A.HOURS_ESTIMATED, 0) as QTY_REQ, IF(A.LMO = 'M' or A.LMO = 'O', A.HOURS_ACTUAL, 0) as QTY_ISS, IF(A.DATE_COMPLETED = '1900-01-01', null, A.DATE_COMPLETED) as DATE_CLOSED, IF(A.LMO = 'L', A.UNITS_COMPLETE, 0) as GOOD_PCS, IF(A.LMO = 'L', A.UNITS_SCRAP, 0) as SCRAP_PCS from V_JOB_OPERATIONS A")
+F.Intrinsic.Control.If(V.Screen.F_Open-Close!chkOpLimit.CheckedAsBoolean)
+	F.Intrinsic.Date.DateAdd("m",-3,V.Ambient.Date,V.Local.dThreeMonths)
+	F.Intrinsic.Date.BeginningOfMonth(V.Local.dThreeMonths,V.Local.dThreeMonths)
+	F.Intrinsic.String.Build("{0} left join V_JOB_HEADER B on A.JOB = B.JOB and A.SUFFIX = B.SUFFIX where B.DATE_OPENED >= '{1}' and",V.Local.sSQL,V.Local.dThreeMonths.FormatYYYY-MM-DD,V.Local.sSQL)
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.Build("{0} where",V.Local.sSQL,V.Local.sSQL)
+F.Intrinsic.Control.EndIf
+F.Intrinsic.String.Build("{0} A.SEQ < '995000' and LMO in ('L', 'M', 'O') and DATE_COMPLETED = '1900-01-01';",V.Local.sSQL,V.Local.sSQL)
+F.Data.DataTable.CreateFromSQL("dtJobOp","con",V.Local.sSQL,False)
+V.Local.sSQL.Set("select JOB, SUFFIX, rtrim(PART) as FG_PART, DATE_START_OTHER as JOB_START, DATE_DUE as JOB_DUE, IF(SCHEDULE_DIR = 1, 'F', 'B') as SCHEDULE_DIR, rtrim(PROJECT) as PROJECT, rtrim(PHASE) as PHASE from V_JOB_HEADER")
+F.Intrinsic.Control.If(V.Screen.F_Open-Close!chkOpLimit.CheckedAsBoolean)
+	F.Intrinsic.String.Build("{0} where DATE_OPENED >= '{1}'",V.Local.sSQL,V.Local.dThreeMonths.FormatYYYY-MM-DD,V.Local.sSQL)
+F.Intrinsic.Control.EndIf
+F.Intrinsic.String.Build("{0};",V.Local.sSQL,V.Local.sSQL)
+F.Data.DataTable.CreateFromSQL("dtJobHead","con",V.Local.sSQL,False)
+V.Local.sSQL.Set("select A.JOB, A.SFX as SUFFIX, right(A.JSS, 6) as SEQ, cast(A.STARTDATE as datetime) as SCHED_DATE from APSV3_JBLINES A")
+F.Intrinsic.Control.If(V.Screen.F_Open-Close!chkOpLimit.CheckedAsBoolean)
+	F.Intrinsic.String.Build("{0} left join V_JOB_HEADER B on A.JOB = B.JOB and A.SFX = B.SUFFIX where B.DATE_OPENED >= '{1}'",V.Local.sSQL,V.Local.dThreeMonths.FormatYYYY-MM-DD,V.Local.sSQL)
+F.Intrinsic.Control.EndIf
+F.Intrinsic.String.Build("{0};",V.Local.sSQL,V.Local.sSQL)
+F.Data.DataTable.CreateFromSQL("dtJobSched","con",V.Local.sSQL,False)
+V.Local.sSQL.Set("select A.JOB, A.SUFFIX, A.SEQ, Max(A.DATE_SEQUENCE) as LAST_DATE from V_JOB_DETAIL A")
+F.Intrinsic.Control.If(V.Screen.F_Open-Close!chkOpLimit.CheckedAsBoolean)
+	F.Intrinsic.String.Build("{0} left join V_JOB_HEADER B on A.JOB = B.JOB and A.SUFFIX = B.SUFFIX where B.DATE_OPENED >= '{1}'",V.Local.sSQL,V.Local.dThreeMonths.FormatYYYY-MM-DD,V.Local.sSQL)
+F.Intrinsic.Control.EndIf
+F.Intrinsic.String.Build("{0} group by A.JOB, A.SUFFIX, A.SEQ;",V.Local.sSQL,V.Local.sSQL)
+F.Data.DataTable.CreateFromSQL("dtJobLastDate","con",V.Local.sSQL,False)
+F.ODBC.Connection!con.Close
+
+F.Data.Linq.Join("LeftJoin","DataTable","dtJobOp*!*OPER","DataTable","dtJobSched*!*SCHED","OPER.JOB = SCHED.JOB and OPER.SUFFIX = SCHED.SUFFIX and OPER.SEQ = SCHED.SEQ","*",,,,"dtJobOperSched",False)
+F.Data.DataTable.RemoveColumn("dtJobOperSched","JOB1")
+F.Data.DataTable.RemoveColumn("dtJobOperSched","SUFFIX1")
+F.Data.DataTable.RemoveColumn("dtJobOperSched","SEQ1")
+F.Data.DataTable.Close("dtJobOp")
+F.Data.DataTable.Close("dtJobSched")
+
+F.Data.Linq.Join("LeftJoin","DataTable","dtJobOperSched*!*OPER","DataTable","dtJobHead*!*HEAD","OPER.JOB = HEAD.JOB and OPER.SUFFIX = HEAD.SUFFIX","DataTable","dtJobLastDate*!*LDATE","OPER.JOB = LDATE.JOB and OPER.SUFFIX = LDATE.SUFFIX and OPER.SEQ = LDATE.SEQ","*",V.Local.sFilter,,"OPER.JOB asc, OPER.SUFFIX asc, OPER.SEQ asc","dtJobOpOC",True)
+F.Data.DataTable.RemoveColumn("dtJobOpOC","JOB1")
+F.Data.DataTable.RemoveColumn("dtJobOpOC","SUFFIX1")
+F.Data.DataTable.RemoveColumn("dtJobOpOC","SEQ1")
+F.Data.DataTable.RemoveColumn("dtJobOpOC","JOB2")
+F.Data.DataTable.RemoveColumn("dtJobOpOC","SUFFIX2")
+F.Data.DataTable.Close("dtJobOperSched")
+F.Data.DataTable.Close("dtJobHead")
+F.Data.DataTable.Close("dtJobLastDate")
+
+F.Intrinsic.Control.If(V.Screen.F_Open-Close!chkDates.CheckedAsBoolean.Not)
+	F.Intrinsic.String.Build("SCHED_DATE >= #{0}# and SCHED_DATE <= #{1}#",V.Screen.F_Open-Close!dtpBegDate.Value,V.Screen.F_Open-Close!dtpEndDate.Value,V.Local.sFilter)
+	F.Data.DataView.Create("dtJobOpOC","dvDateFilter",22,V.Local.sFilter,)
+	F.Data.DataView.ToDataTable("dtJobOpOC","dvDateFilter","dtJobOpOCTemp",False)
+	F.Data.DataTable.DeleteRow("dtJobOpOC")
+	F.Data.DataTable.Merge("dtJobOpOCTemp","dtJobOpOC",True,3)
+	F.Data.DataTable.Close("dtJobOpOCTemp")
+F.Intrinsic.Control.EndIf
+
+F.Data.DataTable.AddExpressionColumn("dtJobOpOC","CLOSED","Boolean","IIF(IsNull(DATE_CLOSED, #1/1/1900#) = #1/1/1900#, False, True)")
+
+F.Data.DataTable.AddColumn("dtJobOpOC","CLOSE_CMD","String")
+
+F.Data.DataTable.AddColumn("dtJobOpOC","CLOSING_FLAG","String","1")
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.LoadDataTable.End
+
+Program.Sub.DisableControls.Start
+V.Local.sError.Declare
+F.Intrinsic.Control.Try
+
+Gui.F_Open-Close.chkDates.Enabled(False)
+F.Intrinsic.Control.If(V.Screen.F_Open-Close!chkDates.CheckedAsBoolean.Not)
+	Gui.F_Open-Close.frameDates.Enabled(False)
+F.Intrinsic.Control.EndIf
+Gui.F_Open-Close.cmdRefresh.Enabled(False)
+Gui.F_Open-Close.chkOpLimit.Enabled(False)
+Gui.F_Open-Close.gsgcOpenClose.Enabled(False)
+F.Intrinsic.Control.BlockEvents
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.DisableControls.End
+
+Program.Sub.EnableControls.Start
+V.Local.sError.Declare
+F.Intrinsic.Control.Try
+
+Gui.F_Open-Close.chkDates.Enabled(True)
+F.Intrinsic.Control.If(V.Screen.F_Open-Close!chkDates.CheckedAsBoolean.Not)
+	Gui.F_Open-Close.frameDates.Enabled(True)
+F.Intrinsic.Control.EndIf
+Gui.F_Open-Close.cmdRefresh.Enabled(True)
+Gui.F_Open-Close.chkOpLimit.Enabled(True)
+Gui.F_Open-Close.gsgcOpenClose.Enabled(True)
+F.Intrinsic.Control.UnBlockEvents
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.EnableControls.End
+
+Program.Sub.LoadGridView.Start
+V.Local.sError.Declare
+V.Local.sColumns.Declare
+V.Local.iCnt.Declare
+V.Local.iVisibleIndex.Declare
+F.Intrinsic.Control.Try
+
+F.Data.DataView.Create("dtJobOpOC","dvGridView",22,,"JOB asc, SUFFIX asc, SEQ asc")
+Gui.F_Open-Close.gsgcOpenClose.AddGridviewFromDataview("gvOpenClose","dtJobOpOC","dvGridView")
+Gui.F_Open-Close.gsgcOpenClose.SuspendLayout
+
+Gui.F_Open-Close.gsgcOpenClose.SetGridviewProperty("gvOpenClose","Editable",False)
+Gui.F_Open-Close.gsgcOpenClose.SetGridviewProperty("gvOpenClose","ReadOnly",True)
+Gui.F_Open-Close.gsgcOpenClose.SetGridviewProperty("gvOpenClose","AllowColumnResizing",True)
+Gui.F_Open-Close.gsgcOpenClose.SetGridviewProperty("gvOpenClose","AllowColumnMoving",True)
+Gui.F_Open-Close.gsgcOpenClose.SetGridviewProperty("gvOpenClose","ShowGroupPanel",False)
+Gui.F_Open-Close.gsgcOpenClose.SetGridviewProperty("gvOpenClose","EnableAppearanceEvenRow",True)
+Gui.F_Open-Close.gsgcOpenClose.SetGridviewProperty("gvOpenClose","OptionsViewColumnAutoWidth",False)
+
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","JOB_START","Visible",False)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","JOB_DUE","Visible",False)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SCHEDULE_DIR","Visible",False)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","CLOSING_FLAG","Visible",False)
+
+V.Local.iVisibleIndex.Set(-1)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","JOB","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SUFFIX","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","PROJECT","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","PHASE","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","FG_PART","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SEQ","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","LMO","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","RM_PART_WC","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","QTY_REQ","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","QTY_ISS","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SCHED_DATE","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","LAST_DATE","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","DATE_CLOSED","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","GOOD_PCS","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SCRAP_PCS","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","CLOSED","VisibleIndex",V.Local.iVisibleIndex.++)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","CLOSE_CMD","VisibleIndex",V.Local.iVisibleIndex.++)
+
+V.Local.sColumns.Set(V.DataTable.dtJobOpOC.FieldNames)
+F.Intrinsic.String.Split(V.Local.sColumns.UCase,"*!*",V.Local.sColumns)
+F.Intrinsic.Control.For(V.Local.iCnt,0,V.Local.sColumns.UBound,1)
+	Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose",V.Local.sColumns(V.Local.iCnt),"HeaderFontBold",True)
+	Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose",V.Local.sColumns(V.Local.iCnt),"HeaderHAlignment","Center")
+F.Intrinsic.Control.Next(V.Local.iCnt)
+
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","JOB","Caption","Job")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SUFFIX","Caption","Suffix")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","PROJECT","Caption","Project")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","PHASE","Caption","Phase")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","FG_PART","Caption","Finished Good")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SEQ","Caption","Seq")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","LMO","Caption","Line Type")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","RM_PART_WC","Caption","Raw Material/WC")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","QTY_REQ","Caption","Qty Required")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","QTY_ISS","Caption","Qty Issued")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SCHED_DATE","Caption","Scheduled Date")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","LAST_DATE","Caption","Last Date Iss'd")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","DATE_CLOSED","Caption","Date Closed")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","GOOD_PCS","Caption","Good Pieces")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SCRAP_PCS","Caption","Scrap Pieces")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","CLOSED","Caption","Closed")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","CLOSE_CMD","Caption"," ")
+
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","JOB","CellHAlignment","Center")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SUFFIX","CellHAlignment","Center")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","PROJECT","CellHAlignment","Center")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","PHASE","CellHAlignment","Center")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","FG_PART","CellHAlignment","Near")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SEQ","CellHAlignment","Center")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","LMO","CellHAlignment","Center")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","RM_PART_WC","CellHAlignment","Near")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","QTY_REQ","CellHAlignment","Far")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","QTY_ISS","CellHAlignment","Far")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SCHED_DATE","CellHAlignment","Center")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","LAST_DATE","CellHAlignment","Center")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","DATE_CLOSED","CellHAlignment","Center")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","GOOD_PCS","CellHAlignment","Far")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SCRAP_PCS","CellHAlignment","Far")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","CLOSED","CellHAlignment","Center")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","CLOSE_CMD","CellHAlignment","Center")
+
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","JOB","MinWidth",65)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SUFFIX","MinWidth",50)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","PROJECT","MinWidth",65)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","PHASE","MinWidth",50)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","FG_PART","MinWidth",120)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SEQ","MinWidth",60)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","LMO","MinWidth",75)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","RM_PART_WC","MinWidth",120)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","QTY_REQ","MinWidth",95)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","QTY_ISS","MinWidth",85)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SCHED_DATE","MinWidth",110)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","LAST_DATE","MinWidth",105)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","DATE_CLOSED","MinWidth",85)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","GOOD_PCS","MinWidth",90)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SCRAP_PCS","MinWidth",90)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","CLOSED","MinWidth",60)
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","CLOSE_CMD","MinWidth",100)
+
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SCHED_DATE","DisplayCustomDateTime","d")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","LAST_DATE","DisplayCustomDateTime","d")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","DATE_CLOSED","DisplayCustomDateTime","d")
+
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","QTY_REQ","DisplayCustomNumeric","n4")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","QTY_ISS","DisplayCustomNumeric","n4")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","GOOD_PCS","DisplayCustomNumeric","n4")
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","SCRAP_PCS","DisplayCustomNumeric","n4")
+
+Gui.F_Open-Close.gsgcOpenClose.ColumnEdit("gvOpenClose","CLOSE_CMD","EditorButton","Close Sequence")
+
+Gui.F_Open-Close.gsgcOpenClose.SetColumnProperty("gvOpenClose","CLOSE_CMD","Fixed","Right")
+
+Gui.F_Open-Close.gsgcOpenClose.ResumeLayout
+Gui.F_Open-Close.gsgcOpenClose.MainView("gvOpenClose")
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.LoadGridView.End
+
+Program.Sub.gsgcOpenClose_RowCellClick.Start
+V.Local.sError.Declare
+V.Local.sMsg.Declare
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Control.BlockEvents
+
+F.Intrinsic.Control.SelectCase(V.Args.Column.UCase)
+	F.Intrinsic.Control.Case("CLOSE_CMD")
+		'Close WO Seq on current line
+		F.Intrinsic.Control.If(V.DataTable.dtJobOpOC(V.Args.RowIndex).CLOSED!FieldVal,=,False)
+			Gui.F_Open-Close..Enabled(False)
+			Gui.F_Open-Close.gsgcOpenClose.SuspendLayout
+			
+			F.Intrinsic.String.Build("Closing WO Sequence{0}Job: {1}{0}Suffix: {2}{0}Seq: {3}",V.Ambient.NewLine,V.DataTable.dtJobOpOC(V.Args.RowIndex).JOB!FieldVal,V.DataTable.dtJobOpOC(V.Args.RowIndex).SUFFIX!FieldVal,V.DataTable.dtJobOpOC(V.Args.RowIndex).SEQ!FieldVal,V.Local.sMsg)
+			F.Intrinsic.UI.InvokeWaitDialog(V.Local.sMsg,"'Close Sequence' has been clicked")
+			
+			F.Intrinsic.Control.CallSub(CloseWOSeq,"Row",V.Args.RowIndex,"Job",V.DataTable.dtJobOpOC(V.Args.RowIndex).JOB!FieldVal,"Suffix",V.DataTable.dtJobOpOC(V.Args.RowIndex).SUFFIX!FieldVal,"Seq",V.DataTable.dtJobOpOC(V.Args.RowIndex).SEQ!FieldVal)
+			
+			Gui.F_Open-Close.gsgcOpenClose.ResumeLayout
+			Gui.F_Open-Close..Enabled(True)
+			Gui.F_Open-Close..SetFocus
+			
+			F.Intrinsic.UI.CloseWaitDialog
+		F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndSelect
+
+F.Intrinsic.Control.UnBlockEvents
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.gsgcOpenClose_RowCellClick.End
+
+Program.Sub.CloseWOSeq.Start
+V.Local.sError.Declare
+F.Intrinsic.Control.Try
+
+F.Global.Callwrapper.New("CloseWOSeq","Manufacturing.CloseWorkOrderSequence")
+F.Global.Callwrapper.SetProperty("CloseWOSeq","BeginningWorkOrder",V.Args.Job)
+F.Global.Callwrapper.SetProperty("CloseWOSeq","BeginningWorkOrderSuffix",V.Args.Suffix)
+F.Global.Callwrapper.SetProperty("CloseWOSeq","WorkOrderSequence",V.Args.Seq)
+F.Global.Callwrapper.SetProperty("CloseWOSeq","CloseDate",V.Ambient.Date)
+F.Global.Callwrapper.Run("CloseWOSeq")
+
+F.Data.DataTable.SetValue("dtJobOpOC",V.Args.Row,"DATE_CLOSED",V.Ambient.Date)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.CloseWOSeq.End
+
+Program.Sub.UpdateScheduleDates.Start
+V.Local.sError.Declare
+V.Local.sParams.Declare
+V.Local.sSQL.Declare
+V.Local.sFilter.Declare
+V.Local.sRows.Declare
+V.Local.iCnt.Declare
+F.Intrinsic.Control.Try
+
+'F.Global.Callwrapper.New("RescheduleWO","Manufacturing.ScheduleExistingWorkOrder")
+'F.Global.Callwrapper.SetProperty("RescheduleWO","WorkOrder",V.Args.Job)
+'F.Global.Callwrapper.SetProperty("RescheduleWO","WorkOrderSuffix",V.Args.Suffix)
+'F.Global.Callwrapper.SetProperty("RescheduleWO","WorkOrderSequence",V.Args.Seq)
+''PROGRAM BREAKS HERE
+'F.Global.Callwrapper.SetProperty("RescheduleWO","Scheduling","Backward")
+''PROGRAM BREAKS HERE
+'F.Global.Callwrapper.SetProperty("RescheduleWO","StartDate",V.Args.StartDate)
+'F.Global.Callwrapper.SetProperty("RescheduleWO","DueDate",V.Args.DueDate)
+'F.Global.Callwrapper.SetProperty("RescheduleWO","HideWindow",True)
+'F.Global.Callwrapper.Run("RescheduleWO")
+
+F.Intrinsic.String.ConcatCallWrapperArgs(V.Args.StartDate.FormatMMDDYY,V.Args.DueDate.FormatMMDDYY,V.Args.Job,V.Args.Suffix,"","B",V.Local.sParams)
+
+F.Global.General.CallWrapperSync(500030,V.Local.sParams)
+
+'F.Intrinsic.String.Build("select JOB, SFX as SUFFIX, right(JSS, 6) as SEQ, cast(STARTDATE as datetime) as SCHED_DATE from APSV3_JBLINES where JOB = '{0}' and SFX = '{1}';",V.Args.Job,V.Args.Suffix,V.Local.sSQL)
+'F.ODBC.Connection!con.OpenCompanyConnection
+'F.Data.DataTable.CreateFromSQL("dtJobSched","con",V.Local.sSQL)
+'F.ODBC.Connection!con.Close
+
+'F.Intrinsic.String.Build("JOB = '{0}' and SUFFIX = '{1}' and CLOSING_FLAG = '1'",V.Args.Job,V.Args.Suffix,V.Local.sFilter)
+'F.Data.DataView.Create("dtJobOpOC","dvUpdateSchedDate",22,V.Local.sFilter,"SEQ asc")
+'F.Data.DataTable.Select("dtJobOpOC",V.Local.sFilter,V.Local.sRows)
+'F.Data.DataView.Create("dtJobSched","dvJobSfxSeq",22)
+'F.Intrinsic.Control.For(V.Local.iCnt,0,V.DataView.dtJobOpOC!dvUpdateSchedDate.RowCount--,1)
+'	F.Intrinsic.UI.ChangeWaitStatus("Updating Dashboard",V.Local.iCnt,0,V.DataView.dtJobOpOC!dvUpdateSchedDate.RowCount--)
+'	F.Intrinsic.String.Build("JOB = '{0}' and SUFFIX = '{1}' and SEQ = '{2}'",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).JOB!FieldVal,V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).SUFFIX!FieldVal,V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).SEQ!FieldVal,V.Local.sFilter)
+'	F.Data.DataView.SetFilter("dtJobSched","dvJobSfxSeq",V.Local.sFilter)
+'	F.Intrinsic.Control.If(v.DataView.dtJobSched!dvJobSfxSeq.RowCount,>,0)
+'		F.Data.DataTable.AddRow("dtJobOpOC","JOB",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).JOB!FieldVal,"SUFFIX",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).SUFFIX!FieldVal,"SEQ",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).SEQ!FieldVal,"FG_PART",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).FG_PART!FieldVal,"LMO",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).LMO!FieldVal,"RM_PART_WC",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).RM_PART_WC!FieldVal,"QTY_REQ",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).QTY_REQ!FieldVal,"QTY_ISS",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).QTY_ISS!FieldVal,"LAST_DATE",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).LAST_DATE!FieldVal,"DATE_CLOSED",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).DATE_CLOSED!FieldVal,"GOOD_PCS",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).GOOD_PCS!FieldVal,"SCRAP_PCS",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).SCRAP_PCS!FieldVal,"JOB_START",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).JOB_START!FieldVal,"JOB_DUE",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).JOB_DUE!FieldVal,"SCHEDULE_DIR",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).SCHEDULE_DIR!FieldVal,"CLOSING_FLAG","0","SCHED_DATE",V.DataView.dtJobSched!dvJobSfxSeq(0).SCHED_DATE!FieldVal)
+'	F.Intrinsic.Control.Else
+'		F.Data.DataTable.AddRow("dtJobOpOC","JOB",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).JOB!FieldVal,"SUFFIX",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).SUFFIX!FieldVal,"SEQ",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).SEQ!FieldVal,"FG_PART",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).FG_PART!FieldVal,"LMO",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).LMO!FieldVal,"RM_PART_WC",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).RM_PART_WC!FieldVal,"QTY_REQ",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).QTY_REQ!FieldVal,"QTY_ISS",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).QTY_ISS!FieldVal,"LAST_DATE",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).LAST_DATE!FieldVal,"DATE_CLOSED",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).DATE_CLOSED!FieldVal,"GOOD_PCS",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).GOOD_PCS!FieldVal,"SCRAP_PCS",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).SCRAP_PCS!FieldVal,"JOB_START",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).JOB_START!FieldVal,"JOB_DUE",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).JOB_DUE!FieldVal,"SCHEDULE_DIR",V.DataView.dtJobOpOC!dvUpdateSchedDate(V.Local.iCnt).SCHEDULE_DIR!FieldVal,"CLOSING_FLAG","0")
+'	F.Intrinsic.Control.EndIf
+'F.Intrinsic.Control.Next(V.Local.iCnt)
+
+'F.Intrinsic.Control.If(V.Local.sRows,!=,"")
+'	F.Intrinsic.String.Split(V.Local.sRows,"*!*",V.Local.sRows)
+'	F.Intrinsic.Control.For(V.Local.iCnt,V.Local.sRows.UBound,0,-1)
+'		F.Data.DataTable.DeleteRow("dtJobOpOC",V.Local.sRows(V.Local.iCnt))
+'	F.Intrinsic.Control.Next(V.Local.iCnt)
+'F.Intrinsic.Control.EndIf
+'F.Data.DataTable.AcceptChanges("dtJobOpOC")
+
+'F.Data.DataView.Close("dtJobOpOC","dvUpdateSchedDate")
+'F.Data.DataTable.Close("dtJobSched")
+
+'F.Data.DataTable.SetValue("dtJobOpOC",-1,"CLOSING_FLAG","1")
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.UpdateScheduleDates.End
